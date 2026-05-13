@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Menu | Meet in Coffee</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="brand__logo">☕</div>
+        <div class="brand__name">
+          <div class="brand__title">Meet in Coffee</div>
+          <div class="brand__subtitle">Admin • Menu</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav__link" href="admin-dashboard.html">Dashboard</a>
+        <a class="nav__link" href="admin-kategori.html">Kategori</a>
+        <a class="nav__link" href="admin-meja.html">Meja</a>
+        <a class="nav__link" href="admin-pesanan.html">Pesanan</a>
+        <a class="nav__link" href="admin-laporan.html">Laporan</a>
+        <a class="nav__link" href="admin-login.html" id="btnLogout">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Manajemen Menu (Demo)</h1>
+
+    <div class="card">
+      <div class="muted" style="font-size:13px">CRUD di sini hanya menimpa data mock dalam <code>localStorage</code>. Backend MySQL nanti akan mengambil/menyimpan data.</div>
+      <div class="divider"></div>
+
+      <div class="grid-2">
+        <div>
+          <h2 class="card__title" style="margin-top:0">Tambah Menu</h2>
+          <div class="form-row">
+            <div style="flex:1">
+              <label>Nama Menu</label>
+              <input id="nama_menu" class="input" placeholder="Contoh: Es Kopi Hitam" />
+            </div>
+            <div style="flex:1">
+              <label>Harga</label>
+              <input id="harga" class="input" type="number" min="0" step="1000" placeholder="18000" />
+            </div>
+          </div>
+
+          <div class="form-row" style="margin-top:10px">
+            <div style="flex:1">
+              <label>Kategori</label>
+              <select id="id_kategori" class="input"></select>
+            </div>
+            <div style="flex:1">
+              <label>Stok</label>
+              <input id="stok" class="input" type="number" min="0" step="1" placeholder="10" />
+            </div>
+          </div>
+
+          <div style="margin-top:10px">
+            <label>Deskripsi</label>
+            <textarea id="deskripsi" class="input" style="min-height:86px; resize:vertical" placeholder="Deskripsi menu..."></textarea>
+          </div>
+
+          <div class="row" style="margin-top:12px; gap:12px; flex-wrap:wrap">
+            <button id="btnAdd" class="btn btn--primary" type="button">Tambah</button>
+            <button id="btnReset" class="btn" type="button">Reset Demo</button>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="card__title" style="margin-top:0">Daftar Menu</h2>
+          <div style="overflow:auto; max-height:420px">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nama</th>
+                  <th>Kategori</th>
+                  <th>Harga</th>
+                  <th>Stok</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="menuTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script>
+    const isLoggedIn = () => localStorage.getItem('mic_admin_logged_in_v1') === '1';
+    if (!isLoggedIn()) window.location.href = 'admin-login.html';
+
+    document.getElementById('btnLogout').addEventListener('click', (e)=>{
+      e.preventDefault();
+      localStorage.setItem('mic_admin_logged_in_v1','0');
+      window.location.href = 'admin-login.html';
+    });
+
+    const stateLoad = () => {
+      // private load via MIC by resetting? We'll use localStorage key directly for CRUD
+      const raw = localStorage.getItem('mic_demo_v1');
+      return raw ? JSON.parse(raw) : null;
+    };
+
+    const stateSave = (s) => localStorage.setItem('mic_demo_v1', JSON.stringify(s));
+
+    const categories = MIC.getCategories();
+    const catSelect = document.getElementById('id_kategori');
+    catSelect.innerHTML = categories.map(c => `<option value="${c.id}">${c.nama}</option>`).join('');
+
+    const getCategoryName = (id) => (categories.find(c=>String(c.id)===String(id))?.nama) || '-';
+
+    function renderTable() {
+      const state = stateLoad() || { menus: [], categories: [] };
+      const menus = state.menus || [];
+      const tbody = document.getElementById('menuTbody');
+      tbody.innerHTML = menus.map(m => `
+        <tr>
+          <td>${m.id}</td>
+          <td>${m.nama_menu}</td>
+          <td>${getCategoryName(m.id_kategori)}</td>
+          <td>${MIC.fmtIDR(m.harga)}</td>
+          <td>${m.stok}</td>
+          <td>
+            <button class="btn" type="button" data-del="${m.id}">Hapus</button>
+          </td>
+        </tr>
+      `).join('');
+
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-del');
+          if (!confirm('Hapus menu ini?')) return;
+          const st = stateLoad();
+          st.menus = (st.menus||[]).filter(mm => String(mm.id) !== String(id));
+          stateSave(st);
+          renderTable();
+        });
+      });
+    }
+
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      const nama_menu = document.getElementById('nama_menu').value?.trim();
+      const harga = Number(document.getElementById('harga').value);
+      const id_kategori = Number(document.getElementById('id_kategori').value);
+      const stok = Number(document.getElementById('stok').value);
+      const deskripsi = document.getElementById('deskripsi').value?.trim();
+
+      if (!nama_menu) return alert('Nama menu wajib');
+      if (Number.isNaN(harga)) return alert('Harga wajib');
+      if (Number.isNaN(stok)) return alert('Stok wajib');
+
+      const st = stateLoad() || { menus: [], categories: [] };
+      const nextId = (st.menus.reduce((mx,m)=>Math.max(mx, Number(m.id||0)),0) || 0) + 1;
+      st.menus.push({
+        id: nextId,
+        nama_menu,
+        harga,
+        deskripsi: deskripsi || '-',
+        gambar: '',
+        stok: stok || 0,
+        id_kategori,
+      });
+      stateSave(st);
+      renderTable();
+      document.getElementById('nama_menu').value = '';
+      document.getElementById('harga').value = '';
+      document.getElementById('stok').value = '';
+      document.getElementById('deskripsi').value = '';
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      if (!confirm('Reset seluruh data demo?')) return;
+      MIC.resetDemoData();
+      renderTable();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
+
