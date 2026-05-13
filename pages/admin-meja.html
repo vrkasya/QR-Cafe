@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Meja | Meet in Coffee</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="brand__logo">☕</div>
+        <div class="brand__name">
+          <div class="brand__title">Meet in Coffee</div>
+          <div class="brand__subtitle">Admin • Meja</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav__link" href="admin-dashboard.html">Dashboard</a>
+        <a class="nav__link" href="admin-menu.html">Menu</a>
+        <a class="nav__link" href="admin-kategori.html">Kategori</a>
+        <a class="nav__link" href="admin-pesanan.html">Pesanan</a>
+        <a class="nav__link" href="admin-laporan.html">Laporan</a>
+        <a class="nav__link" href="admin-login.html" id="btnLogout">Logout</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Manajemen Meja (Demo)</h1>
+
+    <div class="card">
+      <div class="grid-2">
+        <div>
+          <h2 class="card__title" style="margin-top:0">Tambah Meja</h2>
+          <label>Nomor Meja</label>
+          <input id="nomor_meja" class="input" placeholder="Contoh: C1" />
+
+          <div class="muted" style="margin-top:10px; font-size:13px; line-height:1.5">
+            QR code demo akan otomatis dibuat dari nomor meja (mis. TABLE_C1).
+            Backend nanti akan menggunakan QR generator.
+          </div>
+
+          <div class="row" style="margin-top:12px; gap:12px; flex-wrap:wrap">
+            <button id="btnAdd" class="btn btn--primary" type="button">Tambah</button>
+            <button id="btnReset" class="btn" type="button">Reset Demo</button>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="card__title" style="margin-top:0">Daftar Meja</h2>
+          <div style="overflow:auto; max-height:420px">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nomor</th>
+                  <th>QR Code</th>
+                  <th>Aksi</th>
+                </tr>
+              </thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script>
+    const isLoggedIn = () => localStorage.getItem('mic_admin_logged_in_v1') === '1';
+    if (!isLoggedIn()) window.location.href = 'admin-login.html';
+
+    document.getElementById('btnLogout').addEventListener('click', (e)=>{
+      e.preventDefault();
+      localStorage.setItem('mic_admin_logged_in_v1','0');
+      window.location.href = 'admin-login.html';
+    });
+
+    const stateLoad = () => {
+      const raw = localStorage.getItem('mic_demo_v1');
+      return raw ? JSON.parse(raw) : MIC.seedIfNeeded();
+    };
+
+    const stateSave = (s) => localStorage.setItem('mic_demo_v1', JSON.stringify(s));
+
+    function render() {
+      const st = stateLoad();
+      const tbody = document.getElementById('tbody');
+      tbody.innerHTML = (st.tables || []).map(t => `
+        <tr>
+          <td>${t.id}</td>
+          <td>${t.nomor_meja}</td>
+          <td><code>${t.qr_code}</code></td>
+          <td><button class="btn" type="button" data-del="${t.id}">Hapus</button></td>
+        </tr>
+      `).join('');
+
+      tbody.querySelectorAll('[data-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-del');
+          if (!confirm('Hapus meja ini?')) return;
+          const st2 = stateLoad();
+          st2.tables = (st2.tables || []).filter(x => String(x.id) !== String(id));
+          stateSave(st2);
+          render();
+        });
+      });
+    }
+
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      const nomor = document.getElementById('nomor_meja').value?.trim();
+      if (!nomor) return alert('Nomor meja wajib');
+
+      const st = stateLoad();
+      st.tables = st.tables || [];
+      const nextId = (st.tables.reduce((mx,t)=>Math.max(mx, Number(t.id||0)),0) || 0) + 1;
+      const qr_code = 'TABLE_' + nomor.replace(/\s+/g,'').toUpperCase();
+      st.tables.push({ id: nextId, nomor_meja: nomor, qr_code });
+      stateSave(st);
+      document.getElementById('nomor_meja').value = '';
+      render();
+    });
+
+    document.getElementById('btnReset').addEventListener('click', () => {
+      if (!confirm('Reset seluruh data demo?')) return;
+      MIC.resetDemoData();
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>
+

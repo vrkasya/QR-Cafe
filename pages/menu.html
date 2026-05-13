@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Menu | Meet in Coffee</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="brand__logo">☕</div>
+        <div class="brand__name">
+          <div class="brand__title">Meet in Coffee</div>
+          <div class="brand__subtitle">Menu Digital</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav__link" href="scan.html">Scan</a>
+        <a class="nav__link" href="keranjang.html">Keranjang</a>
+        <a class="nav__link" href="checkout.html">Checkout</a>
+        <a class="nav__link" href="status-pesanan.html">Status</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Pilih Menu</h1>
+
+    <div class="card">
+      <div class="form-row" style="align-items:flex-end">
+        <div style="flex:1">
+          <label>Kategori</label>
+          <select id="categorySelect" class="input" aria-label="Kategori"></select>
+        </div>
+        <div style="flex:1">
+          <label>Cari</label>
+          <input id="searchInput" class="input" placeholder="Cari menu..." />
+        </div>
+        <div style="display:flex; gap:10px; flex-wrap:wrap">
+          <button id="btnViewCart" class="btn btn--primary" type="button">Lihat Keranjang</button>
+          <button id="btnClearCart" class="btn" type="button">Kosongkan</button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <div id="menuGrid" class="menu-grid"></div>
+    </div>
+
+    <div class="muted" id="tableHint" style="margin-top:12px; font-size:13px"></div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script>
+    const categorySelect = document.getElementById('categorySelect');
+    const searchInput = document.getElementById('searchInput');
+    const menuGrid = document.getElementById('menuGrid');
+    const tableHint = document.getElementById('tableHint');
+
+    const renderCategory = () => {
+      const categories = MIC.getCategories();
+      categorySelect.innerHTML = '';
+      const all = document.createElement('option');
+      all.value = '';
+      all.textContent = 'Semua Kategori';
+      categorySelect.appendChild(all);
+
+      categories.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c.id;
+        opt.textContent = c.nama;
+        categorySelect.appendChild(opt);
+      });
+    };
+
+    const renderMenu = () => {
+      const stateMenus = MIC.getMenus();
+      const categoryId = categorySelect.value;
+      const q = (searchInput.value || '').trim().toLowerCase();
+
+      const menus = stateMenus.filter(m => {
+        const okCat = !categoryId || String(m.id_kategori) === String(categoryId);
+        const okQ = !q || (m.nama_menu || '').toLowerCase().includes(q) || (m.deskripsi || '').toLowerCase().includes(q);
+        return okCat && okQ;
+      });
+
+      if (!menus.length) {
+        menuGrid.innerHTML = `<div class="muted">Menu tidak ditemukan.</div>`;
+        return;
+      }
+
+      menuGrid.innerHTML = menus.map(m => {
+        const stokBadge = m.stok > 10
+          ? `<span class="badge badge--success">Stok: ${m.stok}</span>`
+          : (m.stok > 0
+              ? `<span class="badge badge--warning">Stok sedikit: ${m.stok}</span>`
+              : `<span class="badge badge--danger">Habis</span>`);
+
+        return `
+          <div class="product">
+            <div class="product__img">${m.gambar ? '' : '🍹'}</div>
+            <div>
+              <div class="product__name">${m.nama_menu}</div>
+              <div class="product__meta">${MIC.fmtIDR(m.harga)} • ${m.deskripsi}</div>
+              <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap">
+                ${stokBadge}
+                <div style="margin-left:auto; display:flex; gap:8px; flex-wrap:wrap">
+                  <button class="btn" type="button" data-add="${m.id}" ${m.stok<=0 ? 'disabled' : ''}>Tambah</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      [...menuGrid.querySelectorAll('[data-add]')].forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = btn.getAttribute('data-add');
+          MIC.addToCart(id, 1);
+          btn.textContent = 'Ditambah ✓';
+          setTimeout(() => (btn.textContent = 'Tambah'), 700);
+        });
+      });
+    };
+
+    const requireTable = () => {
+      const table = MIC.getSelectedTable();
+      if (!table) {
+        alert('Pilih meja terlebih dahulu di halaman Scan QR.');
+        window.location.href = 'scan.html';
+        return false;
+      }
+      tableHint.textContent = `Pesanan untuk Meja ${table.nomor_meja} (QR: ${table.qr_code})`;
+      return true;
+    };
+
+    document.getElementById('btnViewCart').addEventListener('click', () => {
+      window.location.href = 'keranjang.html';
+    });
+
+    document.getElementById('btnClearCart').addEventListener('click', () => {
+      if (!confirm('Kosongkan keranjang?')) return;
+      MIC.clearCart();
+      renderMenu();
+    });
+
+    categorySelect.addEventListener('change', renderMenu);
+    searchInput.addEventListener('input', renderMenu);
+
+    renderCategory();
+    requireTable();
+    renderMenu();
+  </script>
+
+  <style>
+    .menu-grid{display:grid; grid-template-columns: 1fr 1fr; gap:14px}
+    @media (max-width: 900px){.menu-grid{grid-template-columns:1fr}}
+    .product__img{background:linear-gradient(135deg, rgba(109,94,252,.25), rgba(45,212,191,.1));}
+  </style>
+</body>
+</html>
+

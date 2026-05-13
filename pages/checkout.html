@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Checkout | Meet in Coffee</title>
+  <link rel="stylesheet" href="../assets/css/styles.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar__inner">
+      <div class="brand">
+        <div class="brand__logo">☕</div>
+        <div class="brand__name">
+          <div class="brand__title">Meet in Coffee</div>
+          <div class="brand__subtitle">Checkout</div>
+        </div>
+      </div>
+      <nav class="nav">
+        <a class="nav__link" href="menu.html">Menu</a>
+        <a class="nav__link" href="keranjang.html">Keranjang</a>
+        <a class="nav__link" href="status-pesanan.html">Status</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <h1 class="page-title">Konfirmasi Pesanan</h1>
+
+    <div class="card">
+      <div class="grid-2" style="align-items:start">
+        <div>
+          <div id="tableHint" class="muted" style="margin-bottom:10px"></div>
+
+          <label>Nama Pelanggan (opsional)</label>
+          <input id="customerName" class="input" placeholder="Contoh: Andi" />
+
+          <div class="divider"></div>
+
+          <h2 class="card__title">Item Pesanan</h2>
+          <div id="itemsList"></div>
+        </div>
+
+        <div>
+          <div style="display:flex; justify-content:space-between; align-items:flex-end; gap:14px">
+            <div>
+              <div class="muted" style="font-size:13px">Total Pembayaran</div>
+              <div style="font-weight:900; font-size:26px" id="grandTotal">Rp 0</div>
+            </div>
+            <span class="badge badge--warning" id="statusBadge">Status: Menunggu</span>
+          </div>
+
+          <hr class="sep" />
+
+          <div class="muted" style="font-size:13px; line-height:1.5">
+            Setelah tombol <b>Kirim Pesanan</b> ditekan, pesanan akan muncul di halaman admin & kasir (mock).
+          </div>
+
+          <div class="row" style="margin-top:14px; gap:12px; flex-wrap:wrap">
+            <button id="btnPlaceOrder" class="btn btn--primary" type="button">Kirim Pesanan</button>
+            <a id="btnBackCart" class="btn btn--ghost" href="keranjang.html">Kembali</a>
+          </div>
+
+          <div class="divider"></div>
+
+          <div class="kv">
+            <div>
+              <div style="font-weight:800">Estimasi</div>
+              <div class="muted">Real-time status memakai mock data, update saat admin/kasir mengubah status.</div>
+            </div>
+            <span class="badge">Mock</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script src="../assets/js/app.js"></script>
+  <script>
+    const tableHint = document.getElementById('tableHint');
+    const itemsList = document.getElementById('itemsList');
+    const grandTotal = document.getElementById('grandTotal');
+    const customerName = document.getElementById('customerName');
+    const statusBadge = document.getElementById('statusBadge');
+
+    const ensureTable = () => {
+      const table = MIC.getSelectedTable();
+      if (!table) {
+        alert('Pilih meja terlebih dahulu di halaman Scan QR.');
+        window.location.href = 'scan.html';
+        return null;
+      }
+      tableHint.textContent = `Meja ${table.nomor_meja} • QR: ${table.qr_code}`;
+      return table;
+    };
+
+    const render = () => {
+      const { items, total } = MIC.cartWithComputedTotals();
+      if (!items.length) {
+        alert('Keranjang kosong');
+        window.location.href = 'menu.html';
+        return;
+      }
+      grandTotal.textContent = MIC.fmtIDR(total);
+      itemsList.innerHTML = items.map(it => `
+        <div class="kv">
+          <div>
+            <div style="font-weight:800">${it.nama_menu}</div>
+            <div class="muted">Jumlah: ${it.jumlah} • Harga: ${MIC.fmtIDR(it.harga)}</div>
+          </div>
+          <div style="font-weight:900">${MIC.fmtIDR(it.subtotal)}</div>
+        </div>
+      `).join('');
+    };
+
+    document.getElementById('btnPlaceOrder').addEventListener('click', () => {
+      try {
+        const table = ensureTable();
+        const cart = JSON.parse(localStorage.getItem('mic_cart_v1') || '{"items":[]}');
+        const order = MIC.createOrderFromCart({
+          tableId: table.id,
+          cart,
+          customerName: customerName.value?.trim()
+        });
+
+        // store last order id for status page
+        sessionStorage.setItem('mic_last_order_id', String(order.id_pesanan));
+        MIC.clearCart();
+        statusBadge.textContent = 'Status: Menunggu';
+        window.location.href = 'status-pesanan.html';
+      } catch (e) {
+        alert(e?.message || 'Gagal membuat pesanan');
+      }
+    });
+
+    ensureTable();
+    render();
+  </script>
+</body>
+</html>
+
